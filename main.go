@@ -60,14 +60,6 @@ func main() {
 				Usage: "log level (debug, info, warn, error, fatal, panic)",
 				Value: "panic",
 			},
-			&cli.StringFlag{
-				Name:        "gh-token",
-				Usage:       "github token",
-				Value:       "",
-				Required:    true,
-				EnvVars:     []string{"GHDB_GITHUB_TOKEN"},
-				Destination: &ctrl.GitHubToken,
-			},
 			&cli.PathFlag{
 				Name:    "config",
 				Usage:   "config file path",
@@ -93,7 +85,7 @@ func main() {
 
 			cacheFile := filepath.Join(ctrl.CacheDir, "cache.json")
 
-			ctrl.GitHub = clients.NewGitHub(ctrl.GitHubToken)
+			ctrl.GitHub = clients.NewGitHub()
 			ctrl.GitDB = gdb.New(cacheFile, conf)
 
 			switch ctx.String("log-level") {
@@ -122,8 +114,8 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:   "sync",
-				Usage:  "sync all github org, user, and PR data",
+				Name:  "sync",
+				Usage: "sync all github org, user, and PR data",
 				Action: ctrl.Sync,
 			},
 			{

@@ -14,6 +14,7 @@ import (
 
 type UserOrOrg struct {
 	Name  string `yaml:"name"`   // the name of the user or org
+	Token string `yaml:"token"`  // the token to use for the user or org
 	IsOrg bool   `yaml:"is_org"` // if true, the name is an org, otherwise it's a user
 
 	// URL is an optional base URL to use for the user or org

@@ -36,7 +36,7 @@ func (c *Controller) Sync(ctx *cli.Context) error {
         baseURL = user.URL
       }
 
-      newRepos, err := c.GitHub.AllRepositoriesFor(baseURL, user.Name, !user.IsOrg)
+      newRepos, err := c.GitHub.AllRepositoriesFor(baseURL, user.Name, !user.IsOrg, user.Token)
       if err != nil {
         panic(err)
       }
@@ -61,7 +61,7 @@ func (c *Controller) Sync(ctx *cli.Context) error {
         baseURL = user.URL
       }
 
-      newPrs, err := c.GitHub.AllPullRequestsFor(baseURL, user.Name)
+      newPrs, err := c.GitHub.AllPullRequestsFor(baseURL, user.Name, user.Token)
       if err != nil {
         panic(err)
       }

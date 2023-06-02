@@ -4,7 +4,10 @@ package clients
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/hay-kot/ghdb/app/clients/httpclient"
 )
@@ -18,12 +21,11 @@ type GitHub struct {
 	URLLookup KeyPair
 }
 
-func NewGitHub(token string) *GitHub {
+func NewGitHub() *GitHub {
 	client := httpclient.New(http.DefaultClient, "")
 
 	client.Use(
 		httpclient.MwContentType("application/json"),
-		httpclient.MwBearerToken(token),
 	)
 
 	return &GitHub{http: client}
@@ -34,13 +36,15 @@ type Owner struct {
 }
 
 type Repository struct {
-	Name     string `json:"name"`
-	Owner    Owner  `json:"owner"`
-	CloneURL string `json:"clone_url"`
-	WebURL   string `json:"html_url"`
+	Name        string `json:"name"`
+	FullName    string `json:"full_name"`
+	Owner       Owner  `json:"owner"`
+	CloneURL    string `json:"clone_url"`
+	WebURL      string `json:"html_url"`
+	Description string `json:"description"`
 }
 
-func (gh *GitHub) AllRepositoriesFor(baseURL, namespace string, user bool) ([]Repository, error) {
+func (gh *GitHub) AllRepositoriesFor(baseURL, namespace string, user bool, token string) ([]Repository, error) {
 	if namespace == "" {
 		return nil, fmt.Errorf("namespace is required")
 	}
@@ -61,7 +65,10 @@ func (gh *GitHub) AllRepositoriesFor(baseURL, namespace string, user bool) ([]Re
 	}
 
 	for resultsLen == -1 || resultsLen == pageSize {
-		resp, err := gh.http.Get(gh.http.Pathf("%s/%s/%s/repos?per_page=%d&page=%d", baseURL, pathPrefix, namespace, pageSize, page))
+		resp, err := gh.http.Get(
+			gh.http.Pathf("%s/%s/%s/repos?per_page=%d&page=%d", baseURL, pathPrefix, namespace, pageSize, page),
+			httpclient.MwBearerToken(token),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -84,11 +91,26 @@ func (gh *GitHub) AllRepositoriesFor(baseURL, namespace string, user bool) ([]Re
 }
 
 type PullRequest struct {
-	Number int    `json:"number"`
-	Title  string `json:"title"`
-	User   Owner  `json:"user"`
-	URL    string `json:"html_url"`
-	Draft  bool   `json:"draft"`
+	Number        int    `json:"number"`
+	Title         string `json:"title"`
+	User          Owner  `json:"user"`
+	URL           string `json:"html_url"`
+	Draft         bool   `json:"draft"`
+	RepositoryURL string `json:"repository_url"`
+}
+
+func (pr PullRequest) RepositoryName() string {
+	// Parse the repository name from the URL
+	// Assume last two segments are the owner and repo name
+
+	name := pr.RepositoryURL
+	name = strings.TrimSuffix(name, "/")
+	segments := strings.Split(name, "/")
+	if len(segments) < 2 {
+		return pr.RepositoryURL
+	}
+
+	return segments[len(segments)-2] + "/" + segments[len(segments)-1]
 }
 
 type searchResults struct {
@@ -97,7 +119,7 @@ type searchResults struct {
 
 // AllPullRequestsFor  all repositories for a given user
 // Orgs are not supported for this method
-func (gh *GitHub) AllPullRequestsFor(baseURL, user string) ([]PullRequest, error) {
+func (gh *GitHub) AllPullRequestsFor(baseURL, user string, token string) ([]PullRequest, error) {
 	if user == "" {
 		return nil, fmt.Errorf("user is required")
 	}
@@ -111,12 +133,20 @@ func (gh *GitHub) AllPullRequestsFor(baseURL, user string) ([]PullRequest, error
 	var prs []PullRequest
 
 	for resultsLen == -1 || resultsLen == pageSize {
-		resp, err := gh.http.Get(gh.http.Pathf("%s/search/issues?q=state:open+type:pr+author:%s&per_page=%d&page=%d", baseURL, user, pageSize, page))
+		resp, err := gh.http.Get(
+			gh.http.Pathf("%s/search/issues?q=state:open+type:pr+author:%s&per_page=%d&page=%d", baseURL, user, pageSize, page),
+			httpclient.MwBearerToken(token),
+		)
 		if err != nil {
 			return nil, err
 		}
 
 		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != http.StatusOK {
+			io.Copy(os.Stderr, resp.Body)
+			return nil, fmt.Errorf("failed to fetch pull requests for user %s", user)
+		}
 
 		var results searchResults
 

@@ -13,9 +13,9 @@ import (
 type ClientMiddleware = func(*http.Request) (*http.Request, error)
 
 type Client struct {
-	client      *http.Client
-	baseURL     string
-	mw          []ClientMiddleware
+	client  *http.Client
+	baseURL string
+	mw      []ClientMiddleware
 }
 
 func New(client *http.Client, base string) *Client {
@@ -30,45 +30,53 @@ func (C *Client) Use(mws ...ClientMiddleware) {
 	C.mw = append(C.mw, mws...)
 }
 
-func (c *Client) Get(url string) (*http.Response, error) {
+func (c *Client) Get(url string, mw ...ClientMiddleware) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	return c.Do(req)
+	return c.Do(req, mw)
 }
 
-func (c *Client) Post(url string, payload []byte) (*http.Response, error) {
+func (c *Client) Post(url string, payload []byte, mw ...ClientMiddleware) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, err
 	}
-	return c.Do(req)
+	return c.Do(req, mw)
 }
 
-func (c *Client) Put(url string, payload []byte) (*http.Response, error) {
+func (c *Client) Put(url string, payload []byte, mw ...ClientMiddleware) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, err
 	}
-	return c.Do(req)
+	return c.Do(req, mw)
 }
 
-func (c *Client) Delete(url string) (*http.Response, error) {
+func (c *Client) Delete(url string, mw ...ClientMiddleware) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	return c.Do(req)
+	return c.Do(req, mw)
 }
 
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
+func (c *Client) Do(req *http.Request, rmw []ClientMiddleware) (*http.Response, error) {
 	for _, mw := range c.mw {
-    var err error
-    req, err = mw(req)
-    if err != nil {
-      return nil, err
-    }
+		var err error
+		req, err = mw(req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, mw := range rmw {
+		var err error
+		req, err = mw(req)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c.client.Do(req)
@@ -77,9 +85,9 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 // Path will safely join the base URL and the provided path and return a string
 // that can be used in a request.
 func (c *Client) Path(url string) string {
-  if strings.HasPrefix(url, "http") {
-    return url
-  }
+	if strings.HasPrefix(url, "http") {
+		return url
+	}
 
 	base := strings.TrimRight(c.baseURL, "/")
 	if url == "" {
