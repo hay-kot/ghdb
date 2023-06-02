@@ -55,9 +55,6 @@ func (c *Controller) Find(ctx *cli.Context) error {
 var (
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
 
-	boldText = lipgloss.NewStyle().
-			Bold(true)
-
 	titleColor = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
 			Background(lipgloss.Color("#3772FF"))

@@ -144,7 +144,7 @@ func (gh *GitHub) AllPullRequestsFor(baseURL, user string, token string) ([]Pull
 		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
-			io.Copy(os.Stderr, resp.Body)
+			_, _ = io.Copy(os.Stderr, resp.Body)
 			return nil, fmt.Errorf("failed to fetch pull requests for user %s", user)
 		}
 

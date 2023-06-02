@@ -26,8 +26,8 @@ func New(client *http.Client, base string) *Client {
 	}
 }
 
-func (C *Client) Use(mws ...ClientMiddleware) {
-	C.mw = append(C.mw, mws...)
+func (c *Client) Use(mws ...ClientMiddleware) {
+	c.mw = append(c.mw, mws...)
 }
 
 func (c *Client) Get(url string, mw ...ClientMiddleware) (*http.Response, error) {
